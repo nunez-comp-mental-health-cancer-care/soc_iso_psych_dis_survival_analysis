@@ -9,7 +9,7 @@ from utils import dif_in_months, add_cols, parse_multi_to_datetime
 from dateutil.relativedelta import relativedelta
 from os import path
 from datetime import timedelta
-from globals import RAW_PRISM_CSV, DATA_DIR, INDEX, FROM_PRISM, DAYS_IN_MONTH
+from globals import RAW_PRISM_CSV, DATA_DIR, INDEX, FROM_PRISM, SOC_ISO_FEATS
 
 def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
 
@@ -26,18 +26,28 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
     pts_df = pd.read_csv(pts_csv, index_col=INDEX, engine='python')
     df = pts_df.copy()[FROM_PRISM] # Pull in only needed columns
 
-    # Months observed
-    df['obs_mo'] = df.apply(lambda row: dif_in_months(row, 'DiagnosisDate', 'Death_or_lastfu_date'), axis=1)
-    df = df.drop(columns=['DiagnosisDate', 'Death_or_lastfu_date'])
+    # Months observed use "Dx_to_death_lastfu_months" instead of calculating ourselves
+    #df['obs_mo'] = df.apply(lambda row: dif_in_months(row, 'DiagnosisDate', 'Death_or_lastfu_date'), axis=1)
+    #df = df.drop(columns=['DiagnosisDate', 'Death_or_lastfu_date'])
 
     # Fill blank Alive or Dead, Convert to True and False, replace blanks with False
-    df['PatStatus'] = df['PatStatus'].replace(r'^\s*$', False, regex=True)
-    df['PatStatus'] = df['PatStatus'].replace({'A': False})
-    df['PatStatus'] = df['PatStatus'].replace({'D': True})
+    print(df[1250:1260]['PatStatus'])
+    #df['PatStatus'] = df['PatStatus'].replace(r'^\s*$', False, regex=True)
+    df['PatStatus'] = df['PatStatus'].fillna(False)
+    df['PatStatus'] = df['PatStatus'].replace({"blank!": False, 'A': False, 'D': True})
+    df = df.rename(columns={"PatStatus": "died", "Dx_to_death_lastfu_months": "observed_mo"})
 
-    print(df.head)
+    # For the various social isolation features, fill blanks with mode, and convert to True/False
+    for feature in SOC_ISO_FEATS:
+        df[feature] = df[feature].astype('str') # Convert col to string
+        mode = df[feature].mode().iat[0]  # Find mode of column
+        # Replace Blanks, coded as B or 99, with mode of the column, and convert Y N, 1 0 to True False
+        df[feature] = df[feature].replace({"B": mode, "99": mode})
+        df[feature] = df[feature].replace({"Y": True, "N": False, "1":True, "0":False, "B":mode, "99":mode})
 
     df.to_csv(filename)
+
+    return df
 
 def index_ends_10(row):
     """
