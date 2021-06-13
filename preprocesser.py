@@ -5,26 +5,37 @@ import warnings
 #from data_globals import PSSCAN_EMOTS, PSSCAN_INFOS, PSSCAN_PRACS, PSSCAN_PHYIS, PSSCAN_SPIRS, PSSCAN_SOCLS, PSSCAN_ALL
 #from data_globals import FROM_DOC_DETAILS, DATE_FEATURES
 #from data_globals import RAW_CANCER_CSV, RAW_PSSCAN_CSV, RAW_DOC_CSV, DATA_DIR
-#from utils import dif_in_months, add_cols, parse_multi_to_datetime
+from utils import dif_in_months, add_cols, parse_multi_to_datetime
 from dateutil.relativedelta import relativedelta
 from os import path
 from datetime import timedelta
-from globals import RAW_PRISM_CSV, DATA_DIR, INDEX, FROM_PRISM
+from globals import RAW_PRISM_CSV, DATA_DIR, INDEX, FROM_PRISM, DAYS_IN_MONTH
 
-def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR):
+def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
 
 
     filename = f'{data_dir}preprocessed_pts.csv'
 
-    # Check if base preprocessed pts file already generated, return if so
-    if path.exists(filename):
+    # Check if base preprocessed pts file already generated, return if so unless overwrite=True
+    if path.exists(filename) and not(overwrite):
         print("preprocessed_pts.csv already generated, will load and exit preprocesser")
         return pd.read_csv(filename, index_col=INDEX)
 
     # Otherwise, generate
     print("preprocessed_pts.csv is processing, this may take a few minutes")
     pts_df = pd.read_csv(pts_csv, index_col=INDEX, engine='python')
-    df = pts_df.copy()[FROM_PRISM]
+    df = pts_df.copy()[FROM_PRISM] # Pull in only needed columns
+
+    # Months observed
+    df['obs_mo'] = df.apply(lambda row: dif_in_months(row, 'DiagnosisDate', 'Death_or_lastfu_date'), axis=1)
+    df = df.drop(columns=['DiagnosisDate', 'Death_or_lastfu_date'])
+
+    # Fill blank Alive or Dead, Convert to True and False, replace blanks with False
+    df['PatStatus'] = df['PatStatus'].replace(r'^\s*$', False, regex=True)
+    df['PatStatus'] = df['PatStatus'].replace({'A': False})
+    df['PatStatus'] = df['PatStatus'].replace({'D': True})
+
+    print(df.head)
 
     df.to_csv(filename)
 
@@ -420,7 +431,7 @@ def index_ends_10(row):
 #     return df
 
 if __name__ == '__main__':
-    preprocess()
+    preprocess(overwrite=True)
     # preprocess_pts(psyhx_subset='anx_or_dep')
     # preprocess_pts(help_subset='alone_or_no_assist')
     # preprocessed_df = preprocess_pts(cancer_csv, psscan_csv, doc_csv, data_dir, dev_mode=True)

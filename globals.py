@@ -8,4 +8,7 @@ RESULTS_DIR = r'C:\Users\jjnunez\PycharmProjects\PSSCAN_Soc_Iso\results\\'
 INDEX = "Other_Study_ID"
 
 # Features to extract from the raw PRSIM file
-FROM_PRISM = ['PatStatus', 'Death_or_lastfu_date']
+FROM_PRISM = ['PatStatus', 'DiagnosisDate', 'Death_or_lastfu_date']
+
+# Constant of days per month
+DAYS_IN_MONTH = 30.436875
