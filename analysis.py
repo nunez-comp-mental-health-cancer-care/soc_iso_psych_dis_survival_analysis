@@ -50,6 +50,58 @@ def plot_KM_curve(df, feat, ax):
     true_kmf.plot_survival_function(ax=ax)
     false_kmf.plot_survival_function(ax=ax)
     ax.set_xlim(0, 100)
+    ax.set_ylim(0, 1)
+
+
+def plot_CPH_model(df, ax):
+    """
+    Fits a Cox Proportional Hazard model to the survival of pts who saw a specific disipline e.g. psychiatry
+
+    Examines the possible imapct of features in the CPH_COLS global
+
+    :param df_dspln: df of pts who saw a specific disicpline
+    :param dspln_to_link: discipline to conduct analysis on
+    :param ax: matplotlib subplot axis to plot onto
+    :return: nothing, but plots figure to supplied axis
+    """
+    # Make a df from the discipline's df which just the columns we need or are examining
+    cph_cols = ['age_dx', 'observed_mo', 'male', 'died'] + SOC_ISO_FEATS # Columns for our CPH Model, CPH_COLS are what variables are examined
+
+    df = df.copy()[cph_cols]
+    #df['sex'] = df['sex'].replace({"F": 1, "M": 0}) # Convert to dummy variable (one-hot) for chpfitter
+
+    # Drop columns if no variablility; some variables of interest may be constant given filtering (e.g. phx_Subset is hx_dep, remove this variable from this analysus)
+    #df = df.loc[:, (df != df.iloc[0]).any()]
+
+
+    # Build dict for renaming and rename, just for aesthetics
+    #rename_dict = FIG_VAR_NAME_DICT
+    #for need in list(PSSCAN_COLNAME_MAP.keys()):
+    #    rename_dict[need] = PSSCAN_COLNAME_MAP[need] + " need"
+    #for dspln in DISCIPLINES_OF_INTEREST:
+    #    rename_dict[dspln] = 'saw ' + dspln
+
+
+
+
+
+    #df = df.rename(columns=rename_dict)
+    ##df = df.drop(columns=['female'])  # Temp for research day figure
+
+    # Prepare plot
+    ax.set_title(f'Cox Proportional Hazard Coefficeints for Mortality')
+
+
+
+    # Fit CoxPHFitter
+    cph = CoxPHFitter()  ## Instantiate the class to create a cph object
+    cph.fit(df, 'observed_mo', event_col='died')
+
+
+
+    cph.print_summary()
+    print(f"plotting CPH Ratios")
+    cph.plot(ax=ax)
 
 
 def analysis(results_dir=RESULTS_DIR):
@@ -70,6 +122,17 @@ def analysis(results_dir=RESULTS_DIR):
         fig.savefig(fig_filename)
         print(f"printed to {fig_filename}")
         plt.close(fig)
+
+    # Create a matplot figure with two subplots, add the plots, and save
+    fig, axs = plt.subplots(1)
+    fig.set_figheight(15)
+    fig.set_figwidth(15)
+
+    plot_CPH_model(df, axs)
+    fig_filename = results_dir + 'cph_.png'
+    fig.savefig(fig_filename)
+    print(f"printed to {fig_filename}")
+    plt.close(fig)
 
 
 if __name__ == '__main__':

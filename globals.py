@@ -9,8 +9,7 @@ INDEX = "Other_Study_ID"
 
 # Features to extract from the raw PRSIM file
 SOC_ISO_FEATS = ['LiveAlone', 'LostSpousePartner', 'Assistance', 'RegularContact', 'EmotionalSupport', 'Social_isolation_YN']
-FROM_PRISM = ['PatStatus', 'Dx_to_death_lastfu_months'] + SOC_ISO_FEATS
-
+FROM_PRISM = ['PatStatus', 'Dx_to_death_lastfu_months', 'AgeAtDiagnosis', 'Sex'] + SOC_ISO_FEATS
 
 # If want to calculate seperately, used following, slightly different from what exists
 # 'DiagnosisDate', 'Death_or_lastfu_date']

@@ -35,7 +35,6 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
     #df['PatStatus'] = df['PatStatus'].replace(r'^\s*$', False, regex=True)
     df['PatStatus'] = df['PatStatus'].fillna(False)
     df['PatStatus'] = df['PatStatus'].replace({"blank!": False, 'A': False, 'D': True})
-    df = df.rename(columns={"PatStatus": "died", "Dx_to_death_lastfu_months": "observed_mo"})
 
     # For the various social isolation features, fill blanks with mode, and convert to True/False
     for feature in SOC_ISO_FEATS:
@@ -45,6 +44,13 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
         df[feature] = df[feature].replace({"B": mode, "99": mode})
         df[feature] = df[feature].replace({"Y": True, "N": False, "1":True, "0":False, "B":mode, "99":mode})
 
+    # Convert sex
+    df['Sex'] = df['Sex'].replace({'M': True, 'F': False})
+
+    # Rename columns
+    df = df.rename(columns={"PatStatus": "died", "Dx_to_death_lastfu_months": "observed_mo", 'Sex':'male', 'AgeAtDiagnosis': 'age_dx'})
+
+    #print(df.dtypes) # check data dtypes
     df.to_csv(filename)
 
     return df
