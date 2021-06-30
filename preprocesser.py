@@ -36,6 +36,11 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
     df['PatStatus'] = df['PatStatus'].fillna(False)
     df['PatStatus'] = df['PatStatus'].replace({"blank!": False, 'A': False, 'D': True})
 
+    # Replace missing metastatic entires with False, and convert to True False
+    df['M1_IV_ALL_CAT'] = df['M1_IV_ALL_CAT'].astype('str')
+    df['M1_IV_ALL_CAT'] = df['M1_IV_ALL_CAT'].replace({"blank!": False, '0': False, '1': True, '99':False})
+
+
     # For the various social isolation features, fill blanks with mode, and convert to True/False
     for feature in SOC_ISO_FEATS:
         df[feature] = df[feature].astype('str') # Convert col to string

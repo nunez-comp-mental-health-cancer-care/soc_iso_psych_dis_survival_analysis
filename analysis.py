@@ -65,7 +65,7 @@ def plot_CPH_model(df, ax):
     :return: nothing, but plots figure to supplied axis
     """
     # Make a df from the discipline's df which just the columns we need or are examining
-    cph_cols = ['age_dx', 'observed_mo', 'male', 'died'] + SOC_ISO_FEATS # Columns for our CPH Model, CPH_COLS are what variables are examined
+    cph_cols = ['age_dx', 'observed_mo', 'male', 'died', 'M1_IV_ALL_CAT'] + SOC_ISO_FEATS # Columns for our CPH Model, CPH_COLS are what variables are examined
 
     df = df.copy()[cph_cols]
     #df['sex'] = df['sex'].replace({"F": 1, "M": 0}) # Convert to dummy variable (one-hot) for chpfitter
