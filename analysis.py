@@ -1,7 +1,7 @@
 from preprocesser import preprocess
 from lifelines import KaplanMeierFitter, statistics, CoxPHFitter
 import matplotlib.pyplot as plt
-from globals import SOC_ISO_FEATS, RESULTS_DIR
+from globals import SOC_ISO_FEATS, RESULTS_DIR, PSYCH_DIST_FEATS
 import pandas as pd
 
 
@@ -110,7 +110,7 @@ def analysis(results_dir=RESULTS_DIR):
 
     # Make df of pts who see and do not see disiplcine
 
-    for feat in SOC_ISO_FEATS:
+    for feat in SOC_ISO_FEATS + PSYCH_DIST_FEATS:
         # Create a matplot figure with two subplots, add the plots, and save
         fig, axs = plt.subplots(1)
         fig.set_figheight(15)

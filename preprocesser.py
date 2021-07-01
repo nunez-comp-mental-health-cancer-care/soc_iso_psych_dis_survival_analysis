@@ -9,7 +9,7 @@ from utils import dif_in_months, add_cols, parse_multi_to_datetime
 from dateutil.relativedelta import relativedelta
 from os import path
 from datetime import timedelta
-from globals import RAW_PRISM_CSV, DATA_DIR, INDEX, FROM_PRISM, SOC_ISO_FEATS
+from globals import RAW_PRISM_CSV, DATA_DIR, INDEX, FROM_PRISM, SOC_ISO_FEATS, PSYCH_DIST_FEATS
 
 def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
 
@@ -47,7 +47,12 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
         mode = df[feature].mode().iat[0]  # Find mode of column
         # Replace Blanks, coded as B or 99, with mode of the column, and convert Y N, 1 0 to True False
         df[feature] = df[feature].replace({"B": mode, "99": mode})
-        df[feature] = df[feature].replace({"Y": True, "N": False, "1":True, "0":False, "B":mode, "99":mode})
+        df[feature] = df[feature].replace({"Y": True, "N": False, "1": True, "0":False, "B": mode, "99": mode})
+
+    for feature in PSYCH_DIST_FEATS:
+        df[feature] = df[feature].astype('str')  # Convert col to string
+        df[feature] = df[feature].replace({"2.0": True, "1.0": False, "0.0": False})
+
 
     # Convert sex
     df['Sex'] = df['Sex'].replace({'M': True, 'F': False})
