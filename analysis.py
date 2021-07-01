@@ -53,7 +53,7 @@ def plot_KM_curve(df, feat, ax):
     ax.set_ylim(0, 1)
 
 
-def plot_CPH_model(df, ax):
+def plot_CPH_model(df, ax, feats):
     """
     Fits a Cox Proportional Hazard model to the survival of pts who saw a specific disipline e.g. psychiatry
 
@@ -62,10 +62,12 @@ def plot_CPH_model(df, ax):
     :param df_dspln: df of pts who saw a specific disicpline
     :param dspln_to_link: discipline to conduct analysis on
     :param ax: matplotlib subplot axis to plot onto
+    :param name: string to name this cph model
+    :param feats:
     :return: nothing, but plots figure to supplied axis
     """
     # Make a df from the discipline's df which just the columns we need or are examining
-    cph_cols = ['age_dx', 'observed_mo', 'male', 'died', 'M1_IV_ALL_CAT'] + SOC_ISO_FEATS # Columns for our CPH Model, CPH_COLS are what variables are examined
+    cph_cols = ['age_dx', 'observed_mo', 'male', 'died', 'M1_IV_ALL_CAT'] + feats # Columns for our CPH Model, CPH_COLS are what variables are examined
 
     df = df.copy()[cph_cols]
     #df['sex'] = df['sex'].replace({"F": 1, "M": 0}) # Convert to dummy variable (one-hot) for chpfitter
@@ -123,16 +125,18 @@ def analysis(results_dir=RESULTS_DIR):
         print(f"printed to {fig_filename}")
         plt.close(fig)
 
-    # Create a matplot figure with two subplots, add the plots, and save
-    fig, axs = plt.subplots(1)
-    fig.set_figheight(15)
-    fig.set_figwidth(15)
+    # Plot the CPHs for both papers
+    for name, feats in zip(['soc_iso', 'psych_dist'], [SOC_ISO_FEATS, PSYCH_DIST_FEATS]):
+        # For social isolation CPH, create a matplot figure with two subplots, add the plots, and save
+        fig, axs = plt.subplots(1)
+        fig.set_figheight(15)
+        fig.set_figwidth(15)
 
-    plot_CPH_model(df, axs)
-    fig_filename = results_dir + 'cph_.png'
-    fig.savefig(fig_filename)
-    print(f"printed to {fig_filename}")
-    plt.close(fig)
+        plot_CPH_model(df, axs, feats)
+        fig_filename = results_dir + name + 'cph_.png'
+        fig.savefig(fig_filename)
+        print(f"printed to {fig_filename}")
+        plt.close(fig)
 
 
 if __name__ == '__main__':
