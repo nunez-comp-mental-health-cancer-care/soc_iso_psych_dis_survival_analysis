@@ -2,6 +2,7 @@ from preprocesser import preprocess
 from lifelines import KaplanMeierFitter, statistics, CoxPHFitter
 import matplotlib.pyplot as plt
 from globals import SOC_ISO_FEATS, RESULTS_DIR, PSYCH_DIST_FEATS
+from copy import deepcopy
 import pandas as pd
 
 
@@ -63,7 +64,7 @@ def plot_CPH_model(df, ax, feats):
     :param dspln_to_link: discipline to conduct analysis on
     :param ax: matplotlib subplot axis to plot onto
     :param name: string to name this cph model
-    :param feats:
+    :param feats: features to use for the CPH model, in addition to metastatic status, age and gender
     :return: nothing, but plots figure to supplied axis
     """
     # Make a df from the discipline's df which just the columns we need or are examining
@@ -126,7 +127,10 @@ def analysis(results_dir=RESULTS_DIR):
         plt.close(fig)
 
     # Plot the CPHs for both papers
-    for name, feats in zip(['soc_iso', 'psych_dist'], [SOC_ISO_FEATS, PSYCH_DIST_FEATS]):
+    soc_iso_feats_no_any = deepcopy(SOC_ISO_FEATS)
+    soc_iso_feats_no_any.remove('Social_isolation_YN') # Don't include "Social_isolation_YN" for CPH model
+
+    for name, feats in zip(['soc_iso', 'psych_dist'], [soc_iso_feats_no_any, PSYCH_DIST_FEATS]):
         # For social isolation CPH, create a matplot figure with two subplots, add the plots, and save
         fig, axs = plt.subplots(1)
         fig.set_figheight(15)
