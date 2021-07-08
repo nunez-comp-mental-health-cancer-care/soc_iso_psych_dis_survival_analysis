@@ -1,7 +1,8 @@
 from preprocesser import preprocess
 from lifelines import KaplanMeierFitter, statistics, CoxPHFitter
 import matplotlib.pyplot as plt
-from globals import SOC_ISO_FEATS, RESULTS_DIR, PSYCH_DIST_FEATS
+from globals import SOC_ISO_FEATS
+from globals import RESULTS_DIR, PSYCH_DIST_FEATS
 from copy import deepcopy
 import pandas as pd
 
@@ -69,45 +70,21 @@ def plot_CPH_model(df, ax, feats):
     """
     # Make a df from the discipline's df which just the columns we need or are examining
     cph_cols = ['age_dx', 'observed_mo', 'male', 'died', 'M1_IV_ALL_CAT'] + feats # Columns for our CPH Model, CPH_COLS are what variables are examined
-
     df = df.copy()[cph_cols]
-    #df['sex'] = df['sex'].replace({"F": 1, "M": 0}) # Convert to dummy variable (one-hot) for chpfitter
-
-    # Drop columns if no variablility; some variables of interest may be constant given filtering (e.g. phx_Subset is hx_dep, remove this variable from this analysus)
-    #df = df.loc[:, (df != df.iloc[0]).any()]
-
-
-    # Build dict for renaming and rename, just for aesthetics
-    #rename_dict = FIG_VAR_NAME_DICT
-    #for need in list(PSSCAN_COLNAME_MAP.keys()):
-    #    rename_dict[need] = PSSCAN_COLNAME_MAP[need] + " need"
-    #for dspln in DISCIPLINES_OF_INTEREST:
-    #    rename_dict[dspln] = 'saw ' + dspln
-
-
-
-
-
-    #df = df.rename(columns=rename_dict)
-    ##df = df.drop(columns=['female'])  # Temp for research day figure
 
     # Prepare plot
     ax.set_title(f'Cox Proportional Hazard Coefficeints for Mortality')
 
-
-
     # Fit CoxPHFitter
     cph = CoxPHFitter()  ## Instantiate the class to create a cph object
     cph.fit(df, 'observed_mo', event_col='died')
-
-
-
     cph.print_summary()
+
     print(f"plotting CPH Ratios")
     cph.plot(ax=ax)
 
 
-def analysis(results_dir=RESULTS_DIR):
+def survival_analysis(results_dir=RESULTS_DIR):
     # Use preprocessor to make df with our pt data
     df = preprocess()
 
@@ -144,5 +121,5 @@ def analysis(results_dir=RESULTS_DIR):
 
 
 if __name__ == '__main__':
-    analysis()
+    survival_analysis()
     print("analysis complete!")
