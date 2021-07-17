@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 import warnings
-#from data_globals import FROM_CANCER_DETAILS, INDEX, LATEST_DATE, FROM_PSSCAN_DETAILS, DISCIPLINES_OF_INTEREST, DISCIPLINE
-#from data_globals import PSSCAN_EMOTS, PSSCAN_INFOS, PSSCAN_PRACS, PSSCAN_PHYIS, PSSCAN_SPIRS, PSSCAN_SOCLS, PSSCAN_ALL
-#from data_globals import FROM_DOC_DETAILS, DATE_FEATURES
-#from data_globals import RAW_CANCER_CSV, RAW_PSSCAN_CSV, RAW_DOC_CSV, DATA_DIR
+# from data_globals import FROM_CANCER_DETAILS, INDEX, LATEST_DATE, FROM_PSSCAN_DETAILS, DISCIPLINES_OF_INTEREST, DISCIPLINE
+# from data_globals import PSSCAN_EMOTS, PSSCAN_INFOS, PSSCAN_PRACS, PSSCAN_PHYIS, PSSCAN_SPIRS, PSSCAN_SOCLS, PSSCAN_ALL
+# from data_globals import FROM_DOC_DETAILS, DATE_FEATURES
+# from data_globals import RAW_CANCER_CSV, RAW_PSSCAN_CSV, RAW_DOC_CSV, DATA_DIR
 from utils import dif_in_months, add_cols, parse_multi_to_datetime
 from dateutil.relativedelta import relativedelta
 from os import path
@@ -22,43 +22,41 @@ def df_analysis(df, filename):
     :return:
     """
 
+
 def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
-
-
     filename = f'{data_dir}preprocessed_pts.csv'
 
     # Check if base preprocessed pts file already generated, return if so unless overwrite=True
-    if path.exists(filename) and not(overwrite):
+    if path.exists(filename) and not (overwrite):
         print("preprocessed_pts.csv already generated, will load and exit preprocesser")
         return pd.read_csv(filename, index_col=INDEX)
 
     # Otherwise, generate
     print("preprocessed_pts.csv is processing, this may take a few minutes")
     pts_df = pd.read_csv(pts_csv, index_col=INDEX, engine='python')
-    df = pts_df.copy()[FROM_PRISM] # Pull in only needed columns
+    df = pts_df.copy()[FROM_PRISM]  # Pull in only needed columns
 
     # Months observed use "Dx_to_death_lastfu_months" instead of calculating ourselves
-    #df['obs_mo'] = df.apply(lambda row: dif_in_months(row, 'DiagnosisDate', 'Death_or_lastfu_date'), axis=1)
-    #df = df.drop(columns=['DiagnosisDate', 'Death_or_lastfu_date'])
+    # df['obs_mo'] = df.apply(lambda row: dif_in_months(row, 'DiagnosisDate', 'Death_or_lastfu_date'), axis=1)
+    # df = df.drop(columns=['DiagnosisDate', 'Death_or_lastfu_date'])
 
     # Fill blank Alive or Dead, Convert to True and False, replace blanks with False
-    #print(df[1250:1260]['PatStatus'])
-    #df['PatStatus'] = df['PatStatus'].replace(r'^\s*$', False, regex=True)
+    # print(df[1250:1260]['PatStatus'])
+    # df['PatStatus'] = df['PatStatus'].replace(r'^\s*$', False, regex=True)
     df['PatStatus'] = df['PatStatus'].fillna(False)
     df['PatStatus'] = df['PatStatus'].replace({"blank!": False, 'A': False, 'D': True})
 
     # Replace missing metastatic entires with False, and convert to True False
     df['M1_IV_ALL_CAT'] = df['M1_IV_ALL_CAT'].astype('str')
-    df['M1_IV_ALL_CAT'] = df['M1_IV_ALL_CAT'].replace({"blank!": False, '0': False, '1': True, '99':False})
-
+    df['M1_IV_ALL_CAT'] = df['M1_IV_ALL_CAT'].replace({"blank!": False, '0': False, '1': True, '99': False})
 
     # For the various social isolation features, fill blanks with mode, and convert to True/False
     for feature in SOC_ISO_FEATS_RAW:
-        df[feature] = df[feature].astype('str') # Convert col to string
+        df[feature] = df[feature].astype('str')  # Convert col to string
         mode = df[feature].mode().iat[0]  # Find mode of column
         # Replace Blanks, coded as B or 99, with mode of the column, and convert Y N, 1 0 to True False
         df[feature] = df[feature].replace({"B": mode, "99": mode})
-        df[feature] = df[feature].replace({"Y": True, "N": False, "1": True, "0":False, "B": mode, "99": mode})
+        df[feature] = df[feature].replace({"Y": True, "N": False, "1": True, "0": False, "B": mode, "99": mode})
 
     for feature in PSYCH_DIST_FEATS:
         df[feature] = df[feature].astype('str')  # Convert col to string
@@ -70,18 +68,19 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
         df[new_feature_name] = ~df[feature]
         df = df.drop(feature, axis=1)
 
-
     # Convert sex
     df['Sex'] = df['Sex'].replace({'M': True, 'F': False})
 
     # Rename columns
-    df = df.rename(columns={"PatStatus": "died", "Dx_to_death_lastfu_months": "observed_mo", 'Sex':'male', 'AgeAtDiagnosis': 'age_dx'})
+    df = df.rename(columns={"PatStatus": "died", "Dx_to_death_lastfu_months": "observed_mo", 'Sex': 'male',
+                            'AgeAtDiagnosis': 'age_dx'})
 
-    #print(df.dtypes) # check data dtypes
+    # print(df.dtypes) # check data dtypes
     df.to_csv(filename)
 
     print('preprocessing complete!')
     return df
+
 
 def index_ends_10(row):
     """

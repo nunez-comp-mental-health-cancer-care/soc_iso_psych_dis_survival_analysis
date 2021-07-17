@@ -15,7 +15,7 @@ FROM_PRISM = [ 'Dx_to_death_lastfu_months', 'AgeAtDiagnosis', 'PatStatus', 'Sex'
 # Features to invert so all are True when having expected to be bad
 SOC_ISO_FEATS_TO_INVERT = ['Assistance', 'RegularContact', 'EmotionalSupport']
 SOC_ISO_FEATS_NO_INVERT = ['LiveAlone', 'LostSpousePartner', 'Social_isolation_YN']
-SOC_ISO_FEATS = SOC_ISO_FEATS_NO_INVERT + ['NoAssitance', 'NoRegularContact', 'NoEmotionalSupport']
+SOC_ISO_FEATS = SOC_ISO_FEATS_NO_INVERT + ['NoAssistance', 'NoRegularContact', 'NoEmotionalSupport']
 
 # If want to calculate seperately, used following, slightly different from what exists
 # 'DiagnosisDate', 'Death_or_lastfu_date']
