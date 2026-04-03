@@ -12,6 +12,146 @@ from datetime import timedelta
 from globals import RAW_PRISM_CSV, DATA_DIR, INDEX, FROM_PRISM, PSYCH_DIST_FEATS
 from globals import SOC_ISO_FEATS_RAW, SOC_ISO_FEATS_TO_INVERT
 
+PATSTATUS_QC_MAP = {
+    'A': 'false',
+    'D': 'true',
+    'False': 'imputed',
+    'blank!': 'imputed',
+    'nan': 'imputed',
+}
+
+METASTATIC_QC_MAP = {
+    '0': 'false',
+    '0.0': 'false',
+    '1': 'true',
+    '1.0': 'true',
+    '99': 'imputed',
+    '99.0': 'imputed',
+    'blank!': 'imputed',
+    'nan': 'imputed',
+}
+
+SOCIAL_QC_MAP = {
+    'Y': 'true',
+    '1': 'true',
+    '1.0': 'true',
+    'N': 'false',
+    '0': 'false',
+    '0.0': 'false',
+    'B': 'imputed',
+    '99': 'imputed',
+    '99.0': 'imputed',
+    'blank!': 'imputed',
+    'nan': 'imputed',
+}
+
+PSYCH_QC_MAP = {
+    '2': 'true',
+    '2.0': 'true',
+    '1': 'false',
+    '1.0': 'false',
+    '0': 'imputed',
+    '0.0': 'imputed',
+    'blank!': 'imputed',
+    'nan': 'imputed',
+}
+
+SEX_QC_MAP = {
+    'M': 'true',
+    'F': 'false',
+}
+
+CODING_SUMMARY_SPECS = [
+    {
+        'raw_column': 'PatStatus',
+        'final_column': 'died',
+        'true_meaning': 'died',
+        'false_meaning': 'alive/censored',
+        'imputation_rule': 'Missing or blank status is folded to False.',
+        'qc_map': PATSTATUS_QC_MAP,
+    },
+    {
+        'raw_column': 'Sex',
+        'final_column': 'male',
+        'true_meaning': 'male',
+        'false_meaning': 'female',
+        'imputation_rule': 'No imputation rule beyond explicit M/F mapping.',
+        'qc_map': SEX_QC_MAP,
+    },
+    {
+        'raw_column': 'M1_IV_ALL_CAT',
+        'final_column': 'M1_IV_ALL_CAT',
+        'true_meaning': 'metastatic at diagnosis',
+        'false_meaning': 'not metastatic at diagnosis',
+        'imputation_rule': '99/blank values are folded to False.',
+        'qc_map': METASTATIC_QC_MAP,
+    },
+    {
+        'raw_column': 'LiveAlone',
+        'final_column': 'LiveAlone',
+        'true_meaning': 'lives alone',
+        'false_meaning': 'does not live alone',
+        'imputation_rule': 'Blank-coded values are imputed to the modal non-blank raw code.',
+        'qc_map': SOCIAL_QC_MAP,
+    },
+    {
+        'raw_column': 'LostSpousePartner',
+        'final_column': 'LostSpousePartner',
+        'true_meaning': 'lost spouse/partner',
+        'false_meaning': 'did not lose spouse/partner',
+        'imputation_rule': 'Blank-coded values are imputed to the modal non-blank raw code.',
+        'qc_map': SOCIAL_QC_MAP,
+    },
+    {
+        'raw_column': 'Assistance',
+        'final_column': 'NoAssistance',
+        'true_meaning': 'no assistance',
+        'false_meaning': 'has assistance',
+        'imputation_rule': 'Blank-coded values are imputed to the modal non-blank raw code, then the boolean is inverted.',
+        'qc_map': SOCIAL_QC_MAP,
+    },
+    {
+        'raw_column': 'RegularContact',
+        'final_column': 'NoRegularContact',
+        'true_meaning': 'no regular contact',
+        'false_meaning': 'has regular contact',
+        'imputation_rule': 'Blank-coded values are imputed to the modal non-blank raw code, then the boolean is inverted.',
+        'qc_map': SOCIAL_QC_MAP,
+    },
+    {
+        'raw_column': 'EmotionalSupport',
+        'final_column': 'NoEmotionalSupport',
+        'true_meaning': 'no emotional support',
+        'false_meaning': 'has emotional support',
+        'imputation_rule': 'Blank-coded values are imputed to the modal non-blank raw code, then the boolean is inverted.',
+        'qc_map': SOCIAL_QC_MAP,
+    },
+    {
+        'raw_column': 'Social_isolation_YN',
+        'final_column': 'Social_isolation_YN',
+        'true_meaning': 'social isolation present',
+        'false_meaning': 'social isolation absent',
+        'imputation_rule': 'Blank-coded values are imputed to the modal non-blank raw code.',
+        'qc_map': SOCIAL_QC_MAP,
+    },
+    {
+        'raw_column': 'AnxietyScore_CAT2',
+        'final_column': 'AnxietyScore_CAT2',
+        'true_meaning': 'anxiety positive',
+        'false_meaning': 'anxiety negative',
+        'imputation_rule': '0/blank values are folded to False.',
+        'qc_map': PSYCH_QC_MAP,
+    },
+    {
+        'raw_column': 'DepressionScore_CAT2',
+        'final_column': 'DepressionScore_CAT2',
+        'true_meaning': 'depression positive',
+        'false_meaning': 'depression negative',
+        'imputation_rule': '0/blank values are folded to False.',
+        'qc_map': PSYCH_QC_MAP,
+    },
+]
+
 
 def normalize_raw_value(value):
     """
@@ -99,6 +239,26 @@ def qc_summary_df(qc_rows):
     return qc_df, summary_df
 
 
+def write_binary_coding_summary(data_dir=DATA_DIR):
+    filename = f'{data_dir}binary_coding_summary.csv'
+    rows = []
+    for spec in CODING_SUMMARY_SPECS:
+        qc_map = spec['qc_map']
+        rows.append({
+            'raw_column': spec['raw_column'],
+            'final_column': spec['final_column'],
+            'raw_true_codes': '|'.join(sorted([k for k, v in qc_map.items() if v == 'true'])),
+            'raw_false_codes': '|'.join(sorted([k for k, v in qc_map.items() if v == 'false'])),
+            'raw_imputed_codes': '|'.join(sorted([k for k, v in qc_map.items() if v == 'imputed'])),
+            'true_meaning': spec['true_meaning'],
+            'false_meaning': spec['false_meaning'],
+            'imputation_rule': spec['imputation_rule'],
+        })
+
+    pd.DataFrame(rows).to_csv(filename, index=False)
+    return filename
+
+
 def df_analysis(df, filename):
     """
     Function to analysize
@@ -113,10 +273,12 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False, strict
     filename = f'{data_dir}preprocessed_pts.csv'
     qc_filename = f'{data_dir}preprocess_qc.csv'
     qc_summary_filename = f'{data_dir}preprocess_qc_summary.csv'
+    coding_summary_filename = write_binary_coding_summary(data_dir)
 
     # Check if base preprocessed pts file already generated, return if so unless overwrite=True
     if path.exists(filename) and not (overwrite):
         print("preprocessed_pts.csv already generated, will load and exit preprocesser")
+        print(f"binary coding summary written to {coding_summary_filename}")
         return pd.read_csv(filename, index_col=INDEX)
 
     # Otherwise, generate
@@ -133,28 +295,13 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False, strict
     # print(df[1250:1260]['PatStatus'])
     # df['PatStatus'] = df['PatStatus'].replace(r'^\s*$', False, regex=True)
     raw_patstatus = df['PatStatus'].copy()
-    append_qc_rows(qc_rows, 'PatStatus', raw_patstatus, {
-        'A': 'false',
-        'D': 'true',
-        'False': 'imputed',
-        'blank!': 'imputed',
-        'nan': 'imputed',
-    })
+    append_qc_rows(qc_rows, 'PatStatus', raw_patstatus, PATSTATUS_QC_MAP)
     df['PatStatus'] = df['PatStatus'].fillna(False)
     df['PatStatus'] = df['PatStatus'].replace({"blank!": False, 'A': False, 'D': True})
 
     # Replace missing metastatic entires with False, and convert to True False
     raw_metastatic = df['M1_IV_ALL_CAT'].copy()
-    append_qc_rows(qc_rows, 'M1_IV_ALL_CAT', raw_metastatic, {
-        '0': 'false',
-        '0.0': 'false',
-        '1': 'true',
-        '1.0': 'true',
-        '99': 'imputed',
-        '99.0': 'imputed',
-        'blank!': 'imputed',
-        'nan': 'imputed',
-    })
+    append_qc_rows(qc_rows, 'M1_IV_ALL_CAT', raw_metastatic, METASTATIC_QC_MAP)
     df['M1_IV_ALL_CAT'] = df['M1_IV_ALL_CAT'].astype('str')
     df['M1_IV_ALL_CAT'] = df['M1_IV_ALL_CAT'].replace({"blank!": False, '0': False, '1': True, '99': False})
 
@@ -166,17 +313,7 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False, strict
         mode = non_blank_values.mode().iat[0]
         mode_class = 'true' if mode in {'Y', '1', '1.0'} else 'false'
         append_qc_rows(qc_rows, feature, raw_feature, {
-            'Y': 'true',
-            '1': 'true',
-            '1.0': 'true',
-            'N': 'false',
-            '0': 'false',
-            '0.0': 'false',
-            'B': 'imputed',
-            '99': 'imputed',
-            '99.0': 'imputed',
-            'blank!': 'imputed',
-            'nan': 'imputed',
+            **SOCIAL_QC_MAP,
         })
         df[feature] = df[feature].astype('str')
         replacement_value = {'true': True, 'false': False}[mode_class]
@@ -186,16 +323,7 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False, strict
 
     for feature in PSYCH_DIST_FEATS:
         raw_feature = df[feature].copy()
-        append_qc_rows(qc_rows, feature, raw_feature, {
-            '2': 'true',
-            '2.0': 'true',
-            '1': 'false',
-            '1.0': 'false',
-            '0': 'imputed',
-            '0.0': 'imputed',
-            'blank!': 'imputed',
-            'nan': 'imputed',
-        })
+        append_qc_rows(qc_rows, feature, raw_feature, PSYCH_QC_MAP)
         df[feature] = df[feature].astype('str')
         df[feature] = df[feature].replace({"2.0": True, "1.0": False, "0.0": False, "2": True, "1": False, "0": False}).astype(bool)
 
@@ -207,10 +335,7 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False, strict
 
     # Convert sex
     raw_sex = df['Sex'].copy()
-    append_qc_rows(qc_rows, 'Sex', raw_sex, {
-        'M': 'true',
-        'F': 'false',
-    })
+    append_qc_rows(qc_rows, 'Sex', raw_sex, SEX_QC_MAP)
     df['Sex'] = df['Sex'].replace({'M': True, 'F': False})
 
     qc_df, qc_summary = qc_summary_df(qc_rows)
