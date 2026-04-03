@@ -13,6 +13,18 @@ from globals import RAW_PRISM_CSV, DATA_DIR, INDEX, FROM_PRISM, PSYCH_DIST_FEATS
 from globals import SOC_ISO_FEATS_RAW, SOC_ISO_FEATS_TO_INVERT
 
 
+def coerce_to_bool(series, true_values, false_values):
+    """
+    Normalize mixed PRISM encodings to a strict boolean series.
+    """
+    normalized = series.astype(str).str.strip()
+    true_values = {str(value).strip() for value in true_values}
+    false_values = {str(value).strip() for value in false_values}
+
+    mapped = normalized.map(lambda value: True if value in true_values else False if value in false_values else pd.NA)
+    return mapped.fillna(False).astype(bool)
+
+
 def df_analysis(df, filename):
     """
     Function to analysize
@@ -33,7 +45,7 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
 
     # Otherwise, generate
     print("preprocessed_pts.csv is processing, this may take a few minutes")
-    pts_df = pd.read_csv(pts_csv, index_col=INDEX, engine='python')
+    pts_df = pd.read_csv(pts_csv, index_col=INDEX, engine='python', encoding='latin1')
     df = pts_df.copy()[FROM_PRISM]  # Pull in only needed columns
 
     # Months observed use "Dx_to_death_lastfu_months" instead of calculating ourselves
@@ -44,11 +56,10 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
     # print(df[1250:1260]['PatStatus'])
     # df['PatStatus'] = df['PatStatus'].replace(r'^\s*$', False, regex=True)
     df['PatStatus'] = df['PatStatus'].fillna(False)
-    df['PatStatus'] = df['PatStatus'].replace({"blank!": False, 'A': False, 'D': True})
+    df['PatStatus'] = coerce_to_bool(df['PatStatus'], true_values=['D'], false_values=['A', 'False', 'blank!', 'nan'])
 
     # Replace missing metastatic entires with False, and convert to True False
-    df['M1_IV_ALL_CAT'] = df['M1_IV_ALL_CAT'].astype('str')
-    df['M1_IV_ALL_CAT'] = df['M1_IV_ALL_CAT'].replace({"blank!": False, '0': False, '1': True, '99': False})
+    df['M1_IV_ALL_CAT'] = coerce_to_bool(df['M1_IV_ALL_CAT'], true_values=['1', '1.0'], false_values=['0', '0.0', '99', '99.0', 'blank!', 'nan'])
 
     # For the various social isolation features, fill blanks with mode, and convert to True/False
     for feature in SOC_ISO_FEATS_RAW:
@@ -56,11 +67,10 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
         mode = df[feature].mode().iat[0]  # Find mode of column
         # Replace Blanks, coded as B or 99, with mode of the column, and convert Y N, 1 0 to True False
         df[feature] = df[feature].replace({"B": mode, "99": mode})
-        df[feature] = df[feature].replace({"Y": True, "N": False, "1": True, "0": False, "B": mode, "99": mode})
+        df[feature] = coerce_to_bool(df[feature], true_values=['Y', '1', '1.0'], false_values=['N', '0', '0.0'])
 
     for feature in PSYCH_DIST_FEATS:
-        df[feature] = df[feature].astype('str')  # Convert col to string
-        df[feature] = df[feature].replace({"2.0": True, "1.0": False, "0.0": False})
+        df[feature] = coerce_to_bool(df[feature], true_values=['2', '2.0'], false_values=['1', '1.0', '0', '0.0', 'nan'])
 
     # Some of the social isolation features need to be flipped so that True = has an expected bad thing
     for feature in SOC_ISO_FEATS_TO_INVERT:
@@ -69,7 +79,7 @@ def preprocess(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
         df = df.drop(feature, axis=1)
 
     # Convert sex
-    df['Sex'] = df['Sex'].replace({'M': True, 'F': False})
+    df['Sex'] = coerce_to_bool(df['Sex'], true_values=['M'], false_values=['F'])
 
     # Rename columns
     df = df.rename(columns={"PatStatus": "died", "Dx_to_death_lastfu_months": "observed_mo", 'Sex': 'male',

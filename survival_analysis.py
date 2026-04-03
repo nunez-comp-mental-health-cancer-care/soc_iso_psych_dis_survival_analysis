@@ -14,11 +14,11 @@ def plot_KM_curve(df, feat, ax):
     df_neg = df.loc[~df[feat]]
 
     # Extract the durations (how long observed/till death) and event observed (whether they died)
-    true_durations = df_true['observed_mo']
-    true_event_observed = df_true['died']
+    true_durations = pd.to_numeric(df_true['observed_mo'], errors='coerce')
+    true_event_observed = df_true['died'].astype(int)
 
-    false_durations = df_neg['observed_mo']
-    false_event_observed = df_neg['died']
+    false_durations = pd.to_numeric(df_neg['observed_mo'], errors='coerce')
+    false_event_observed = df_neg['died'].astype(int)
 
     # print(df.apply(lambda s: pd.to_numeric(s, errors='coerce').notnull().all()))
     # print(df.dtypes)
@@ -70,6 +70,11 @@ def plot_CPH_model(df, ax, feats):
                 'M1_IV_ALL_CAT'] + feats  # Columns for our CPH Model, CPH_COLS are what variables are examined
     # cph_cols = ['observed_mo', 'died'] + feats # Use to keep by itself
     df = df.copy()[cph_cols]
+    bool_cols = ['male', 'died', 'M1_IV_ALL_CAT'] + feats
+    df[bool_cols] = df[bool_cols].astype(int)
+    df['observed_mo'] = pd.to_numeric(df['observed_mo'], errors='coerce')
+    df['age_dx'] = pd.to_numeric(df['age_dx'], errors='coerce')
+    df = df.dropna()
     print(f"CPH analysis includes {len(df)} patients")
 
     # Prepare plot

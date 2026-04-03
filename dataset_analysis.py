@@ -15,7 +15,7 @@ def analyze_dataset(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
 
     # Otherwise, generate
     print("dataset_analysis.csv is being generated, this may take a few minutes")
-    pts_df = pd.read_csv(pts_csv, index_col=INDEX, engine='python')
+    pts_df = pd.read_csv(pts_csv, index_col=INDEX, engine='python', encoding='latin1')
     df = pts_df.copy()[FROM_PRISM]  # Pull in only needed columns
 
     # Prepare df
