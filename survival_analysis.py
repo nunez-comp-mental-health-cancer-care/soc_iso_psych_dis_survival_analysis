@@ -70,6 +70,7 @@ def plot_CPH_model(df, ax, feats):
                 'M1_IV_ALL_CAT'] + feats  # Columns for our CPH Model, CPH_COLS are what variables are examined
     # cph_cols = ['observed_mo', 'died'] + feats # Use to keep by itself
     df = df.copy()[cph_cols]
+    print(f"CPH analysis includes {len(df)} patients")
 
     # Prepare plot
     ax.set_title(f'Cox Proportional Hazard Coefficeints for Mortality')
@@ -102,6 +103,7 @@ def survival_analysis(results_dir=RESULTS_DIR):
         fig_filename = results_dir + 'survival_' + feat + ".png"
         fig.savefig(fig_filename)
         print(f"printed to {fig_filename}")
+        plt.show()
         plt.close(fig)
 
     # Plot the CPHs for both papers
