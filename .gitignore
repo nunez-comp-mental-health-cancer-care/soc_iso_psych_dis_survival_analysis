@@ -9,3 +9,4 @@ __pycache__/
 /results/*.png
 /results/*.csv
 /results/combined_analysis/
+/results/assumptions_checks/
