@@ -10,3 +10,4 @@ __pycache__/
 /results/*.csv
 /results/combined_analysis/
 /results/assumptions_checks/
+/results/paper_figures/
