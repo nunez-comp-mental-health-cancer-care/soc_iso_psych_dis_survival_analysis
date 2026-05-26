@@ -234,7 +234,6 @@ def summarize_tumour_site_outcomes(raw_df, histology_col=None):
     print(final.to_string())
     return final
 
-
 def build_composite_counts(raw_df):
     # Any domain of social isolation based on the five individual raw domains, not Social_isolation_YN.
     social_cols = ['LiveAlone', 'LostSpousePartner', 'Assistance', 'RegularContact', 'EmotionalSupport']
@@ -261,6 +260,33 @@ def build_composite_counts(raw_df):
         'any_psych_distress_missing_n': int(psych_missing),
     }
 
+def add_social_isolation_score(raw_df):
+    """Add a composite social isolation count (0–5) and a count of observed
+    domains for each patient."""
+    social_df = raw_df[['LiveAlone', 'LostSpousePartner', 'Assistance',
+                        'RegularContact', 'EmotionalSupport']].astype(str).apply(
+        lambda s: s.str.strip()
+    )
+
+    missing_values = ['B', '99', '99.0', 'blank!', 'nan', 'NaN', '']
+
+    domain_positive = pd.DataFrame({
+        'LiveAlone':         social_df['LiveAlone'].isin(['Y', '1', '1.0']),
+        'LostSpousePartner': social_df['LostSpousePartner'].isin(['Y', '1', '1.0']),
+        'Assistance':        social_df['Assistance'].isin(['N', '0', '0.0']),
+        'RegularContact':    social_df['RegularContact'].isin(['N', '0', '0.0']),
+        'EmotionalSupport':  social_df['EmotionalSupport'].isin(['N', '0', '0.0']),
+    })
+
+    domain_observed = pd.DataFrame({
+        col: ~social_df[col].isin(missing_values)
+        for col in social_df.columns
+    })
+
+    raw_df['social_isolation_score']      = domain_positive.sum(axis=1).astype(int)
+    raw_df['social_isolation_n_observed'] = domain_observed.sum(axis=1).astype(int)
+
+    return raw_df
 
 def build_patient_characteristics_table(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR):
     output_path = f'{data_dir}patient_characteristics_table.csv'
@@ -291,6 +317,8 @@ def build_patient_characteristics_table(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR
         median=round(raw_df['Dx_to_death_lastfu_months'].median(), 1),
     )
 
+    raw_df = add_social_isolation_score(raw_df)
+
     female_n = int((raw_df['Sex'] == 'F').sum())
     male_n = int((raw_df['Sex'] == 'M').sum())
     alive_n = int((raw_df['PatStatus'] == 'A').sum())
@@ -299,6 +327,53 @@ def build_patient_characteristics_table(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR
     append_row(rows, 'Patient characteristics', 'Male', male_n, percent_non_missing(male_n, n_pts, 0), 0)
     append_row(rows, 'Patient characteristics', 'Alive at last follow-up', alive_n, percent_non_missing(alive_n, n_pts, 0), 0)
 
+# Performance Status (ECOG)
+    # Blank values, 88, and 99 are all coded as unknown.
+    ps_numeric = pd.to_numeric(raw_df['PerformanceStatus'], errors='coerce')
+
+    ps_missing_mask = ps_numeric.isna() | ps_numeric.isin([88, 99])
+    ps_missing_n = int(ps_missing_mask.sum())
+
+    ps_categories = [
+        ('0 - Asymptomatic',                          0),
+        ('1 - Symptomatic, fully ambulatory',         1),
+        ('2 - Symptomatic, in bed <50% of day',       2),
+        ('3 - Symptomatic, in bed >50% of day',       3),
+        ('4 - Bedbound',                              4),
+        ('5 - Dead',                                  5),
+    ]
+
+    ps_category_total = 0
+    for label, val in ps_categories:
+        count = int((ps_numeric == val).sum())
+        ps_category_total += count
+        append_row(
+            rows,
+            'Performance status (ECOG)',
+            label,
+            count,
+            percent_non_missing(count, n_pts, ps_missing_n),
+            ps_missing_n,
+        )
+
+    append_row(
+        rows,
+        'Performance status (ECOG)',
+        'Unknown',
+        ps_missing_n,
+        round(ps_missing_n * 100 / n_pts, 2),
+        ps_missing_n,
+    )
+
+    # Sanity check: categories + unknown should equal total cohort
+    if ps_category_total + ps_missing_n != n_pts:
+        print(f"WARNING: PerformanceStatus rows sum to {ps_category_total + ps_missing_n}, "
+              f"expected {n_pts}. Unrecognised values:")
+        unrecognised = ps_numeric[
+            ~ps_numeric.isin([0, 1, 2, 3, 4, 5]) & ~ps_missing_mask
+        ]
+        print(unrecognised.value_counts(dropna=False))
+    
     tumour_counts = build_tumour_site_counts(raw_df)
     for category in TUMOUR_SITE_ORDER:
         count = int(tumour_counts[category])
@@ -325,7 +400,7 @@ def build_patient_characteristics_table(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR
             positive_n = int(raw_col.isin(['N', '0', '0.0']).sum())
         else:
             positive_n = int(raw_col.isin(['Y', '1', '1.0']).sum())
-        missing_n = int(raw_col.isin(['B', '99', '99.0', 'blank!', 'nan']).sum())
+        missing_n = int(raw_col.isin(['B', '99', '99.0', 'blank!', 'nan', '88', '88.0', '88.00']).sum())
         append_row(rows, 'Domains of social isolation', label, positive_n, percent_non_missing(positive_n, n_pts, missing_n), missing_n)
 
     composite_counts = build_composite_counts(raw_df)
@@ -337,6 +412,50 @@ def build_patient_characteristics_table(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR
         percent_non_missing(composite_counts['any_social_iso_n'], n_pts, composite_counts['any_social_iso_missing_n']),
         composite_counts['any_social_iso_missing_n'],
     )
+
+    # Composite social isolation score (count of positive domains, 0–5)
+    score = raw_df['social_isolation_score']
+    n_observed = raw_df['social_isolation_n_observed']
+
+    eligible_mask = n_observed > 0
+    n_eligible = int(eligible_mask.sum())
+    n_no_data = n_pts - n_eligible
+
+    append_row(
+        rows,
+        'Composite social isolation score',
+        'Mean (SD)',
+        mean=round(score[eligible_mask].mean(), 2),
+        sd=round(score[eligible_mask].std(), 2),
+    )
+    append_row(
+        rows,
+        'Composite social isolation score',
+        'Median',
+        median=int(score[eligible_mask].median()),
+    )
+
+    for k in range(6):
+        count_k = int(((score == k) & eligible_mask).sum())
+        append_row(
+            rows,
+            'Composite social isolation score',
+            f'{k} positive domain{"s" if k != 1 else ""}',
+            count_k,
+            percent_non_missing(count_k, n_pts, n_no_data),
+            n_no_data,
+        )
+
+    append_row(
+        rows,
+        'Composite social isolation score',
+        'No domains observed (excluded)',
+        n_no_data,
+        round(n_no_data * 100 / n_pts, 2),
+        n_no_data,
+    )
+
+    
 
     depression_raw = raw_df['DepressionScore_CAT2'].astype(str).str.strip()
     anxiety_raw = raw_df['AnxietyScore_CAT2'].astype(str).str.strip()
@@ -421,6 +540,8 @@ def analyze_dataset(pts_csv=RAW_PRISM_CSV, data_dir=DATA_DIR, overwrite=False):
 
 
 if __name__ == '__main__':
+    raw_df = pd.read_csv(RAW_PRISM_CSV, index_col=INDEX, engine='python', encoding='latin1')
+    summarize_tumour_site_outcomes(raw_df)
     analyze_dataset(overwrite=True)
     build_patient_characteristics_table()
     print("Analysis complete!")
