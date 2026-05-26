@@ -79,11 +79,9 @@ def plot_KM_curve(df, feat, ax, paper_friendly=False, t_0=84):
         true_kmf.plot_survival_function(ax=ax, label=pos_label, ci_show=False, linewidth=2.5)
         false_kmf.plot_survival_function(ax=ax, label=neg_label, ci_show=False, linewidth=2.5)
         ax.set_title(f'Survival Functions: {pos_label}', fontsize=paper_fontsize, fontweight='bold')
-        ax.set_xlabel('Overall survival (months)', fontsize=paper_fontsize)
+        ax.set_xlabel('Time from initial oncology visit (months)', fontsize=paper_fontsize)
         ax.set_ylabel('Proportion alive', fontsize=paper_fontsize)
         ax.tick_params(axis='both', labelsize=paper_fontsize)
-        ax.text(0.98, 0.05, f'Log-rank p = {logrank_p_value:.4g}\nthrough {t_0} months',
-                transform=ax.transAxes, ha='right', va='bottom', fontsize=paper_fontsize)
         ax.legend(fontsize=paper_fontsize)
         ax.grid(False)
     else:
