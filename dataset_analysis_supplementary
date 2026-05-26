@@ -75,7 +75,8 @@ TUMOUR_SITE_MAP = {
     'Thyroid - P/F 45 and older (7th Ed)': 'Endocrine',
     'Bone': 'Sarcoma',
     'Soft Tissue Sarcoma': 'Sarcoma',
-    'Brain / Spinal Cord': 'Central Nervous System'}
+    'Brain / Spinal Cord': 'Central Nervous System',
+    'Unstageable Site': 'Unknown Primary', }
 
 TUMOUR_SITE_ORDER = [
     'Breast',
@@ -193,6 +194,45 @@ def build_tumour_site_counts(raw_df):
     tumour = raw_df['MajorGroupsStagingDesc'].fillna('').astype(str).str.strip()
     mapped = tumour.map(lambda value: TUMOUR_SITE_MAP.get(value, 'Other'))
     return mapped.value_counts().reindex(TUMOUR_SITE_ORDER, fill_value=0)
+
+def summarize_tumour_site_outcomes(raw_df, histology_col=None):
+    """Print N and number of deaths per tumour site category. Diagnostic only —
+    does not write to disk."""
+    tumour = raw_df['MajorGroupsStagingDesc'].fillna('').astype(str).str.strip()
+    mapped = tumour.map(lambda value: TUMOUR_SITE_MAP.get(value, 'Other'))
+
+    status = raw_df['PatStatus'].astype(str).str.strip()
+    dead_mask = (status == 'D')
+
+    summary = pd.DataFrame({
+        'category': mapped,
+        'dead': dead_mask.astype(int),
+    })
+
+    grouped = summary.groupby('category').agg(
+        n=('dead', 'size'),
+        deaths=('dead', 'sum'),
+    )
+    grouped['pct_of_cohort'] = (grouped['n'] * 100 / len(raw_df)).round(2)
+    grouped['mortality_pct'] = (grouped['deaths'] * 100 / grouped['n']).round(1)
+
+    # Reindex to your defined order, then append any categories that somehow
+    # weren't in TUMOUR_SITE_ORDER (shouldn't happen, but a safety net)
+    ordered = grouped.reindex(TUMOUR_SITE_ORDER)
+    leftover = grouped.drop(index=TUMOUR_SITE_ORDER, errors='ignore')
+    final = pd.concat([ordered, leftover])
+
+    total_row = pd.DataFrame({
+        'n': [len(raw_df)],
+        'deaths': [int(dead_mask.sum())],
+        'pct_of_cohort': [100.0],
+        'mortality_pct': [round(dead_mask.sum() * 100 / len(raw_df), 1)],
+    }, index=['TOTAL'])
+    final = pd.concat([final, total_row])
+
+    print("Tumour site N and deaths:")
+    print(final.to_string())
+    return final
 
 
 def build_composite_counts(raw_df):
