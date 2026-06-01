@@ -1,6 +1,7 @@
 from preprocesser import preprocess
 from lifelines import CoxPHFitter
 import os
+import pandas as pd
 from globals import RESULTS_DIR
 
 # Mapping from preprocessed column names to interpretable labels
@@ -30,6 +31,10 @@ def run_combined_cph(results_dir=RESULTS_DIR):
 
     # Invert 'male' -> 'female' so True = female
     df['male'] = ~df['male']
+    bool_cols = [col for col in CPH_COLS if col not in ['observed_mo']]
+    df[bool_cols] = df[bool_cols].astype(int)
+    df['observed_mo'] = pd.to_numeric(df['observed_mo'], errors='coerce')
+    df = df.dropna()
     df = df.rename(columns=FEAT_RENAME)
 
     cph = CoxPHFitter()

@@ -1,8 +1,14 @@
+from pathlib import Path
 
 # Directories
-RAW_PRISM_CSV = r'C:\Users\jjnunez\PRISM_data\ALLPRISM.csv' #csv containing the data for our analysis
-DATA_DIR = r'C:\Users\jjnunez\PycharmProjects\PSSCAN_Soc_Iso\data\\'  # directory for intermediary data, raw data is stored elsewhere
-RESULTS_DIR = r'C:\Users\jjnunez\PycharmProjects\PSSCAN_Soc_Iso\results\\'
+ROOT_DIR = Path(__file__).resolve().parent
+DATA_DIR = str(ROOT_DIR / 'data') + '/'
+RESULTS_DIR = str(ROOT_DIR / 'results') + '/'
+RAW_PRISM_CSV = str(Path(DATA_DIR) / 'ALLPRISM.csv')  # csv containing the data for our analysis
+
+# Ensure local output directories exist
+Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+Path(RESULTS_DIR).mkdir(parents=True, exist_ok=True)
 
 # Columns
 INDEX = "Other_Study_ID"

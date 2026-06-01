@@ -1,1 +1,13 @@
+.DS_Store
+.idea/
+__pycache__/
+*.pyc
+
 /data/preprocessed_pts.csv
+/data/dataset_analysis.csv
+
+/results/*.png
+/results/*.csv
+/results/combined_analysis/
+/results/assumptions_checks/
+/results/paper_figures/

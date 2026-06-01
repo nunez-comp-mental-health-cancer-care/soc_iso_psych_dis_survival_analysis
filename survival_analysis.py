@@ -1,131 +1,216 @@
 from preprocesser import preprocess
-from lifelines import KaplanMeierFitter, statistics, CoxPHFitter
+from lifelines import KaplanMeierFitter
+from lifelines.plotting import add_at_risk_counts
 import matplotlib.pyplot as plt
-from globals import SOC_ISO_FEATS
-from globals import RESULTS_DIR, PSYCH_DIST_FEATS
-from copy import deepcopy
 import pandas as pd
-import os.path
+import os
 
+from globals import SOC_ISO_FEATS, PSYCH_DIST_FEATS, RESULTS_DIR
 
+# =============================
+# ✅ JCO COLORS (FINAL)
+# =============================
+ORANGE = "#E69F00"
+BLUE = "#0072B2"
+
+# =============================
+# ✅ PANEL LABELS (FINAL)
+# =============================
+PANEL_MAP = {
+    'LiveAlone': '(A) Living alone',
+    'LostSpousePartner': '(B) Recent partner loss',
+    'NoRegularContact': '(C) No regular social contact',
+    'NoEmotionalSupport': '(D) No emotional support',
+    'NoAssistance': '(E) No IADL assistance',
+
+    # Figure 2
+    'DepressionScore_CAT2': '(A) Depression',
+    'AnxietyScore_CAT2': '(B) Anxiety',
+}
+
+# =============================
+# ✅ GROUP LABELS
+# =============================
+PAPER_LABELS = {
+    'LiveAlone': ('Not living alone', 'Living alone'),
+    'LostSpousePartner': ('No recent partner loss', 'Recent partner loss'),
+    'NoRegularContact': ('Regular social contact', 'No regular social contact'),
+    'NoEmotionalSupport': ('Has emotional support', 'No emotional support'),
+    'NoAssistance': ('Has assistance with IADLs', 'No assistance with IADLs'),
+    'Social_isolation_YN': ('No social isolation', 'Social isolation'),
+    'AnxietyScore_CAT2': ('No anxiety', 'Anxiety'),
+    'DepressionScore_CAT2': ('No depression', 'Depression'),
+}
+
+# =============================
+# ✅ HELPERS
+# =============================
+def fmt(val):
+    if val is None or pd.isna(val):
+        return "NR"
+    return f"{val:.1f}"
+
+def order_ci(lo, hi):
+    if lo is None or hi is None:
+        return lo, hi
+    return min(lo, hi), max(lo, hi)
+
+# =============================
+# ✅ MEDIAN + CI
+# =============================
+def compute_median_ci(kmf):
+    sf = kmf.survival_function_
+    ci = kmf.confidence_interval_
+
+    surv = sf.iloc[:, 0]
+    lower_ci = ci.iloc[:, 0]
+    upper_ci = ci.iloc[:, 1]
+
+    def first_cross(series):
+        crossed = series[series <= 0.5]
+        return crossed.index[0] if len(crossed) > 0 else None
+
+    median = first_cross(surv)
+    lo = first_cross(upper_ci)
+    hi = first_cross(lower_ci)
+
+    lo, hi = order_ci(lo, hi)
+    return median, lo, hi
+
+# =============================
+# ✅ KM STATS
+# =============================
+def km_analysis_stats(df, feat):
+    temp = df[['observed_mo', 'died', feat]].copy().dropna()
+
+    df_true = temp[temp[feat] == True]
+    df_false = temp[temp[feat] == False]
+
+    km_true = KaplanMeierFitter()
+    km_false = KaplanMeierFitter()
+
+    km_true.fit(df_true['observed_mo'], df_true['died'])
+    km_false.fit(df_false['observed_mo'], df_false['died'])
+
+    med_t, lo_t, hi_t = compute_median_ci(km_true)
+    med_f, lo_f, hi_f = compute_median_ci(km_false)
+
+    return {
+        "true_kmf": km_true,
+        "false_kmf": km_false,
+        "median_true": med_t,
+        "median_false": med_f,
+        "ci_true_lo": lo_t,
+        "ci_true_hi": hi_t,
+        "ci_false_lo": lo_f,
+        "ci_false_hi": hi_f
+    }
+
+# =============================
+# ✅ KM PLOT
+# =============================
 def plot_KM_curve(df, feat, ax):
-    # Select those with True vs False for this social isoluation feature
-    df_true = df.loc[df[feat]]
-    df_neg = df.loc[~df[feat]]
+    stats = km_analysis_stats(df, feat)
 
-    # Extract the durations (how long observed/till death) and event observed (whether they died)
-    true_durations = df_true['observed_mo']
-    true_event_observed = df_true['died']
+    neg_label, pos_label = PAPER_LABELS.get(feat, (f"Not {feat}", feat))
 
-    false_durations = df_neg['observed_mo']
-    false_event_observed = df_neg['died']
+    # ✅ BLUE FIRST (TOP OF LEGEND)
+    stats["true_kmf"].plot(
+        ax=ax, color=BLUE, linewidth=2.5, label=pos_label, ci_show=False
+    )
 
-    # print(df.apply(lambda s: pd.to_numeric(s, errors='coerce').notnull().all()))
-    # print(df.dtypes)
+    # ✅ ORANGE SECOND (BOTTOM)
+    stats["false_kmf"].plot(
+        ax=ax, color=ORANGE, linewidth=2.5, label=neg_label, ci_show=False
+    )
 
-    # create kmf objects
-    true_kmf = KaplanMeierFitter()
-    false_kmf = KaplanMeierFitter()
+    # ✅ AXES
+    ax.set_xlabel("Time from initial oncology visit (months)")
+    ax.set_ylabel("Proportion alive")
 
-    # Fit the data into the model
-    true_kmf.fit(true_durations, true_event_observed, label=f'{feat} Pts KM Estimate')
-    false_kmf.fit(false_durations, false_event_observed, label=f'Not {feat} Pts KM Estimate')
-
-    # Compare using logrank test
-    logrankstats = statistics.logrank_test(true_durations, false_durations, true_event_observed,
-                                           false_event_observed, t_0=84)
-    logrank_p_value = logrankstats.p_value
-
-    # Create a Plot
-    print(f"plotting KM Survival Curve for {feat} ")
-    ax.set_title(f'KM Survival Curve'
-                 '\n'
-                 f'{len(df_true.index)} Pts w/ {feat}  vs {len(df_neg.index)} Pts w/o {feat}'
-                 '\n'
-                 # f'psyhx subset = {psyhx_subset}, help subset = {help_subset}'
-                 # '\n'
-                 f'Logrank Chi^2 p-value: {logrank_p_value:.4f}')
-
-    true_kmf.plot_survival_function(ax=ax)
-    false_kmf.plot_survival_function(ax=ax)
     ax.set_xlim(0, 100)
+    ax.set_xticks([0, 20, 40, 60, 80, 100])
     ax.set_ylim(0, 1)
+    ax.set_yticks([0, .2, .4, .6, .8, 1])
 
+    ax.legend(loc='upper right')
 
-def plot_CPH_model(df, ax, feats):
-    """
-    Fits a Cox Proportional Hazard model to the survival of pts who saw a specific disipline e.g. psychiatry
+    # ✅ PANEL LABEL (OUTSIDE BOX)
+    if feat in PANEL_MAP:
+        ax.text(
+            0.0, 1.04,
+            PANEL_MAP[feat],
+            transform=ax.transAxes,
+            fontsize=14,
+            fontweight='bold',
+            ha='left',
+            va='bottom'
+        )
 
-    Examines the possible imapct of features in the CPH_COLS global
+    # ✅ RISK TABLE (BLUE FIRST)
+    add_at_risk_counts(
+        stats["true_kmf"],
+        stats["false_kmf"],
+        ax=ax,
+        xticks=[0, 20, 40, 60, 80, 100],
+        rows_to_show=["At risk", "Censored", "Events"],
+        labels=[pos_label, neg_label],
+        at_risk_count_from_start_of_period=True
+    )
 
-    :param df_dspln: df of pts who saw a specific disicpline
-    :param dspln_to_link: discipline to conduct analysis on
-    :param ax: matplotlib subplot axis to plot onto
-    :param name: string to name this cph model
-    :param feats: features to use for the CPH model, in addition to metastatic status, age and gender
-    :return: nothing, but plots figure to supplied axis
-    """
-    # Make a df from the discipline's df which just the columns we need or are examining
-    cph_cols = ['age_dx', 'observed_mo', 'male', 'died',
-                'M1_IV_ALL_CAT'] + feats  # Columns for our CPH Model, CPH_COLS are what variables are examined
-    # cph_cols = ['observed_mo', 'died'] + feats # Use to keep by itself
-    df = df.copy()[cph_cols]
-    print(f"CPH analysis includes {len(df)} patients")
+    # ✅ LAYOUT
+    plt.subplots_adjust(top=0.92, left=0.18, bottom=0.35)
 
-    # Prepare plot
-    ax.set_title(f'Cox Proportional Hazard Coefficeints for Mortality')
+    # ✅ COLOR-MATCH RISK TABLE LABELS
+    table_ax = plt.gcf().axes[-1]
+    for t in table_ax.texts:
+        if t.get_text() == pos_label:
+            t.set_color(BLUE)
+        elif t.get_text() == neg_label:
+            t.set_color(ORANGE)
 
-    # Fit CoxPHFitter
-    cph = CoxPHFitter()  # Instantiate the class to create a cph object
-    cph.fit(df, 'observed_mo', event_col='died')
-    cph.print_summary()
+    # ✅ ANNOTATION
+    txt = (
+        f"{pos_label}: {fmt(stats['median_true'])} mo "
+        f"(95% CI {fmt(stats['ci_true_lo'])}-{fmt(stats['ci_true_hi'])})\n"
+        f"{neg_label}: {fmt(stats['median_false'])} mo "
+        f"(95% CI {fmt(stats['ci_false_lo'])}-{fmt(stats['ci_false_hi'])})"
+    )
 
-    print(f"plotting CPH Ratios")
-    cph.plot(ax=ax)
+    ax.text(
+        0.98, 0.01,
+        txt,
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize=9,
+        bbox=dict(boxstyle='round', facecolor='white', alpha=0.85)
+    )
 
-    return cph.summary
-
-
+# =============================
+# ✅ MAIN
+# =============================
 def survival_analysis(results_dir=RESULTS_DIR):
-    # Use preprocessor to make df with our pt data
     df = preprocess()
 
-    # Make df of pts who see and do not see disiplcine
-    # SOC_ISO_FEATS = ['NoAssistance', 'Social_isolation_YN'] # Use if you want to keep noassistance alone
+    paper_dir = os.path.join(results_dir, "paper_figures")
+    os.makedirs(paper_dir, exist_ok=True)
+
     for feat in SOC_ISO_FEATS + PSYCH_DIST_FEATS:
-        # Create a MatPlotLib figure with two subplots, add the plots, and save
-        fig, axs = plt.subplots(1)
-        fig.set_figheight(15)
-        fig.set_figwidth(15)
+        fig, ax = plt.subplots(figsize=(8, 8))
+        plot_KM_curve(df, feat, ax)
 
-        plot_KM_curve(df, feat, axs)
-        # plot_CPH_model(df_dspln, dspln_to_link, axs[1])
-        fig_filename = results_dir + 'survival_' + feat + ".png"
-        fig.savefig(fig_filename)
-        print(f"printed to {fig_filename}")
-        plt.show()
+        fig.savefig(
+            os.path.join(paper_dir, f"{feat}.png"),
+            dpi=300,
+            bbox_inches='tight'
+        )
+
         plt.close(fig)
 
-    # Plot the CPHs for both papers
-    soc_iso_feats_no_any = deepcopy(SOC_ISO_FEATS)
-    soc_iso_feats_no_any.remove('Social_isolation_YN')  # Don't include "Social_isolation_YN" for CPH model
+    print("✅ FINAL JCO Oncology Practice–ready figures complete")
 
-    for name, feats in zip(['soc_iso', 'psych_dist'], [soc_iso_feats_no_any, PSYCH_DIST_FEATS]):
-        # For social isolation CPH, create a matplot figure with two subplots, add the plots, and save
-        fig, axs = plt.subplots(1)
-        fig.set_figheight(15)
-        fig.set_figwidth(15)
-
-        cph_summary = plot_CPH_model(df, axs, feats)
-        cph_filename = os.path.join(results_dir, name + '_cph.csv')
-        cph_summary.to_csv(cph_filename)
-
-        fig_filename = results_dir + name + '_cph.png'
-        fig.savefig(fig_filename)
-        print(f"printed to {fig_filename}")
-        plt.close(fig)
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     survival_analysis()
-    print("analysis complete!")
+
+    
