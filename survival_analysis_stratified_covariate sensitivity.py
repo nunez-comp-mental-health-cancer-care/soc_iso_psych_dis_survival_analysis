@@ -45,15 +45,15 @@ TUMOUR_GROUP_MAP = {
     'HN':  'Head and Neck',
     'LY':  'Lymphoma',
     'ME':  'Melanoma',
-    'SK':  'Non-melanoma Skin',
+    'SK':  'Skin (Non-melanoma)',
     'SA':  'Sarcoma',
     'NE':  'Central Nervous System',
     'LK':  'Leukemia',
-    'OO':  'Unknown / Other',
-    'OT':  'Unknown / Other',
-    'PU':  'Unknown / Other',
-    'UN':  'Unknown / Other',
-    'UNK': 'Unknown / Other',
+    'OO':  'Other / Unknown',
+    'OT':  'Other / Unknown',
+    'PU':  'Other / Unknown',
+    'UN':  'Other / Unknown',
+    'UNK': 'Other / Unknown',
 }
 
 PREDICTOR_DISPLAY = {
@@ -69,7 +69,7 @@ PREDICTOR_DISPLAY = {
 # Reference level for the tumour-group covariate specification.
 TUMOUR_GROUP_REFERENCE = 'Breast'
 # Catch-all bucket for any tumour group too small to estimate on its own.
-TUMOUR_GROUP_OTHER = 'Unknown / Other'
+TUMOUR_GROUP_OTHER = 'Other / Unknown'
 # Minimum patients per tumour group before folding into the catch-all.
 MIN_GROUP_N = 20
 
@@ -398,4 +398,5 @@ def main(results_dir=RESULTS_DIR):
 
 if __name__ == '__main__':
     main()
+
 
