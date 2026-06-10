@@ -29,7 +29,7 @@ from lifelines.exceptions import ConvergenceError
 
 from preprocesser import preprocess
 from globals import (
-    SOC_ISO_FEATS, PSYCH_DIST_FEATS, RESULTS_DIR,
+    SOC_ISO_DOMAIN_FEATS, PSYCH_DIST_FEATS, RESULTS_DIR,
     RAW_PRISM_CSV, INDEX,
 )
 
@@ -346,7 +346,7 @@ def main(results_dir=RESULTS_DIR):
     print(f"\nTumour group counts:")
     print(df['tumour_group'].value_counts().to_string())
 
-    predictor_cols = list(SOC_ISO_FEATS) + list(PSYCH_DIST_FEATS)
+    predictor_cols = list(SOC_ISO_DOMAIN_FEATS) + list(PSYCH_DIST_FEATS)
 
     cph_strat, n_strat, ev_strat = fit_combined_model(
         df, predictor_cols, 'stratified', out_dir,

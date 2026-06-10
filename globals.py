@@ -22,6 +22,9 @@ FROM_PRISM = [ 'Dx_to_death_lastfu_months', 'AgeAtDiagnosis', 'PatStatus', 'Sex'
 SOC_ISO_FEATS_TO_INVERT = ['Assistance', 'RegularContact', 'EmotionalSupport']
 SOC_ISO_FEATS_NO_INVERT = ['LiveAlone', 'LostSpousePartner', 'Social_isolation_YN']
 SOC_ISO_FEATS = SOC_ISO_FEATS_NO_INVERT + ['NoAssistance', 'NoRegularContact', 'NoEmotionalSupport']
+# The 5 individual social isolation domains used in multivariable models.
+# Excludes Social_isolation_YN (composite binary flag) to avoid collinearity.
+SOC_ISO_DOMAIN_FEATS = ['LiveAlone', 'LostSpousePartner', 'NoRegularContact', 'NoEmotionalSupport', 'NoAssistance']
 
 # If want to calculate seperately, used following, slightly different from what exists
 # 'DiagnosisDate', 'Death_or_lastfu_date']
