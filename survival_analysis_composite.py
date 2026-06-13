@@ -14,9 +14,6 @@ Addresses the reviewer comment on dose-response.
       - departure from linearity (categorical vs linear)
       - overall score effect (categorical vs no score)
 
-Performance status (ECOG) is intentionally NOT adjusted for, matching the
-primary model: ECOG is ~58% missing in this cohort and is not included.
-
 Robust (sandwich) standard errors are used for the reported HRs/CIs. The
 dose-response LRTs are computed from the partial log-likelihoods of the
 stratified (primary) models.
