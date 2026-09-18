@@ -24,6 +24,11 @@ import numpy as np
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
+# --- Vector output settings (journal requires editable, image-free figures) ---
+# fonttype 42 embeds TrueType so text stays selectable/editable text in the PDF
+# rather than being converted to outlines or pixels.
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 import matplotlib.pyplot as plt
 from scipy.stats import chi2
 
@@ -200,10 +205,11 @@ def fit_cox(design_df, mode):
 # KAPLAN-MEIER
 # =============================
 
-def kaplan_meier_curves(df, output_dir, x_max=84):
-    """KM by composite score. Conventions: x-axis truncated ~84 months,
-    no log-rank p-value shown, median OS (95% CI) annotated, at-risk counts
-    for every group."""
+def kaplan_meier_curves(df, output_dir, x_max=100):
+    """KM by composite score, matching the accepted Supplementary Figure S1:
+    x-axis 0-100 months labelled 'Time from initial oncology visit', y-axis
+    'Proportion alive', no plot title, no confidence-interval shading, median
+    OS (95% CI) annotated at left, at-risk counts for every group."""
     fig, ax = plt.subplots(figsize=(8.5, 6.5))
     kmfs, med_rows = [], []
 
@@ -213,7 +219,8 @@ def kaplan_meier_curves(df, output_dir, x_max=84):
             continue
         kmf = KaplanMeierFitter(label=SCORE_CAT_LABEL[lev])
         kmf.fit(df.loc[mask, 'time_months'], df.loc[mask, 'event'])
-        kmf.plot_survival_function(ax=ax, ci_show=True)
+        # ci_show=False: the accepted figure shows clean lines with no shaded CI band.
+        kmf.plot_survival_function(ax=ax, ci_show=False)
         kmfs.append(kmf)
 
         med = kmf.median_survival_time_
@@ -226,25 +233,40 @@ def kaplan_meier_curves(df, output_dir, x_max=84):
         })
 
     ax.set_xlim(0, x_max)
+    ax.set_xticks([0, 20, 40, 60, 80, 100])
     ax.set_ylim(0, 1)
-    ax.set_xlabel('Months since diagnosis')
-    ax.set_ylabel('Overall survival probability')
-    ax.set_title('Overall survival by composite social isolation score')
+    ax.set_yticks([0, .2, .4, .6, .8, 1])
+    ax.set_xlabel('Time from initial oncology visit (months)')
+    ax.set_ylabel('Proportion alive')
+    ax.legend(loc='upper right')
 
     def _fmt(v):
         return 'NR' if (v is None or not np.isfinite(v)) else f'{v:.1f}'
-    txt = 'Median OS (95% CI)\n' + '\n'.join(
+    # No 'Median OS (95% CI)' header line in the accepted figure.
+    txt = '\n'.join(
         f"{r['group']}: {_fmt(r['median_OS_months'])} mo "
-        f"({_fmt(r['median_lo'])}-{_fmt(r['median_hi'])})" for r in med_rows
+        f"(95% CI {_fmt(r['median_lo'])}-{_fmt(r['median_hi'])})" for r in med_rows
     )
     ax.text(0.02, 0.04, txt, transform=ax.transAxes, fontsize=8,
             va='bottom', ha='left',
-            bbox=dict(boxstyle='round', fc='white', ec='gray', alpha=0.85))
+            bbox=dict(boxstyle='square', fc='white', ec='black'))
 
-    add_at_risk_counts(*kmfs, ax=ax)
+    # NOTE: at_risk_count_from_start_of_period is deliberately NOT set, so the
+    # lifelines default (False) is used. This matches the accepted figure, where
+    # the t=0 at-risk count excludes subjects who are censored or have an event
+    # at exactly time zero (e.g. Score 0 shows 30,333 rather than the full
+    # 30,347). Setting it to True shifts every at-risk row upward.
+    add_at_risk_counts(*kmfs, ax=ax,
+                       xticks=[0, 20, 40, 60, 80, 100],
+                       rows_to_show=['At risk', 'Censored', 'Events'])
     plt.tight_layout()
-    fig_path = os.path.join(output_dir, 'km_composite_score.png')
-    fig.savefig(fig_path, dpi=300, bbox_inches='tight')
+
+    # Vector PDF for journal submission (fully editable, no embedded raster).
+    fig_path = os.path.join(output_dir, 'Supplementary_Figure_S1.pdf')
+    fig.savefig(fig_path, format='pdf', bbox_inches='tight')
+    # PNG kept only for local preview; do NOT submit this one.
+    fig.savefig(os.path.join(output_dir, 'km_composite_score.png'),
+                dpi=300, bbox_inches='tight')
     plt.close(fig)
 
     med_df = pd.DataFrame(med_rows)
