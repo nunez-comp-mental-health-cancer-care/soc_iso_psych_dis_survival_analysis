@@ -1,7 +1,7 @@
 """
 Survival analysis for the composite social isolation score.
 
-Addresses the reviewer comment on dose-response.
+Examines whether survival shows a dose-response with the number of isolation domains.
 
 (1) Kaplan-Meier survival curves by social isolation score (0, 1, 2, 3+).
 (2) Cox PH models:
@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
-# --- Vector output settings (journal requires editable, image-free figures) ---
+# --- Vector output settings (editable, image-free figures) ---
 # fonttype 42 embeds TrueType so text stays selectable/editable text in the PDF
 # rather than being converted to outlines or pixels.
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -40,7 +40,7 @@ from lifelines.plotting import add_at_risk_counts
 from globals import RAW_PRISM_CSV, RESULTS_DIR, INDEX
 
 
-# Labels aligned to the manuscript (Skin (Non-melanoma); Other / Unknown).
+# Labels aligned to the paper (Skin (Non-melanoma); Other / Unknown).
 TUMOUR_GROUP_MAP = {
     'BR': 'Breast', 'LU': 'Lung',
     'GI': 'Gastrointestinal', 'GIG': 'Gastrointestinal', 'SAG': 'Gastrointestinal',
@@ -261,10 +261,10 @@ def kaplan_meier_curves(df, output_dir, x_max=100):
                        rows_to_show=['At risk', 'Censored', 'Events'])
     plt.tight_layout()
 
-    # Vector PDF for journal submission (fully editable, no embedded raster).
+    # Vector PDF (fully editable, no embedded raster).
     fig_path = os.path.join(output_dir, 'Supplementary_Figure_S1.pdf')
     fig.savefig(fig_path, format='pdf', bbox_inches='tight')
-    # PNG kept only for local preview; do NOT submit this one.
+    # PNG kept only for local preview.
     fig.savefig(os.path.join(output_dir, 'km_composite_score.png'),
                 dpi=300, bbox_inches='tight')
     plt.close(fig)

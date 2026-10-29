@@ -3,7 +3,7 @@ from lifelines import KaplanMeierFitter
 from lifelines.plotting import add_at_risk_counts
 import matplotlib
 matplotlib.use('Agg')
-# --- Vector output settings (journal requires editable, image-free figures) ---
+# --- Vector output settings (editable, image-free figures) ---
 # fonttype 42 embeds TrueType so text remains selectable/editable text in the
 # PDF rather than being converted to outlines or pixels.
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -15,13 +15,13 @@ import os
 from globals import SOC_ISO_FEATS, PSYCH_DIST_FEATS, RESULTS_DIR
 
 # =============================
-# JCO COLORS (FINAL)
+# FIGURE COLORS
 # =============================
 ORANGE = "#E69F00"
 BLUE = "#0072B2"
 
 # =============================
-# PANEL LABELS (FINAL)
+# PANEL LABELS
 # =============================
 PANEL_MAP = {
     'LiveAlone': '(A) Living alone',
@@ -213,9 +213,9 @@ def plot_KM_curve(df, feat, ax, annotation_fontsize=9, panel_fontsize=14):
 # SAVE HELPER
 # =============================
 def save_vector(fig, path_no_ext, also_png=True):
-    """Write a true-vector PDF for submission (and optionally a PNG preview).
+    """Write a true-vector PDF (and optionally a PNG preview).
 
-    Only the PDF should be sent to the journal. EPS is deliberately not written:
+    EPS is deliberately not written:
     the white annotation box uses alpha transparency, which EPS cannot represent
     and which matplotlib may flatten to a raster block on EPS export.
     """
@@ -233,7 +233,7 @@ def build_combined_figure(df, feats, ncols, out_path_no_ext,
     """Render several KM panels into ONE figure saved as a single vector PDF.
 
     Building the multi-panel figure here (rather than pasting exported panels
-    together in Word) is what keeps the submitted file free of imported images.
+    together in Word) keeps the output file free of imported images.
     """
     nrows = -(-len(feats) // ncols)  # ceiling division
     fig, axes = plt.subplots(nrows, ncols,
@@ -276,10 +276,9 @@ def survival_analysis(results_dir=RESULTS_DIR):
                                  out_path_no_ext=os.path.join(paper_dir, "Figure_2"))
 
     print("Vector figures written to:", paper_dir)
-    print("  Submit:", fig1)
-    print("  Submit:", fig2)
-    print("  (Individual panel PDFs also written, if the journal prefers them.)")
-    print("  PNG copies are previews only - do not submit.")
+    print("  Figure 1:", fig1)
+    print("  Figure 2:", fig2)
+    print("  (Individual panel PDFs and PNG previews also written.)")
 
 if __name__ == "__main__":
     survival_analysis()

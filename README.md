@@ -1,6 +1,6 @@
 # Social Isolation, Psychological Distress, and Survival in Cancer
 
-Analysis code for a study of whether social isolation and psychological distress, reported by patients at cancer diagnosis, are associated with overall survival. It uses patient-reported screening data from PRISM/PSSCAN (Psychosocial Screen for Cancer) linked to cancer registry outcomes.
+Analysis code accompanying our published study of whether social isolation and psychological distress, reported by patients at cancer diagnosis, are associated with overall survival. It is shared so readers can review and replicate the analyses. It uses patient-reported screening data from PRISM/PSSCAN (Psychosocial Screen for Cancer) linked to cancer registry outcomes.
 
 **What the code does:**
 

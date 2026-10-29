@@ -1,8 +1,6 @@
 """
 Combined multivariable Cox proportional hazards analysis.
 
-For JCO Oncology Practice resubmission.
-
 A SINGLE multivariable model is fit with all predictors entered
 simultaneously (mutual adjustment), rather than one model per predictor:
 
